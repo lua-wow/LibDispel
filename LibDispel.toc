@@ -1,0 +1,10 @@
+## Interface: 100207, 110000
+## Author: Luaerror
+## Version: 1.0.0
+## Title: LibDispel
+## Notes: Dispel library
+
+## X-Website: https://github.com/wow-lua/Filger
+## X-Maintainer: pedrozc90
+
+LibDispel.lua
