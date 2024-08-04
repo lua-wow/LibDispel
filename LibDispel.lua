@@ -45,7 +45,8 @@ if not lib.frame then
                 self:RegisterUnitEvent("PLAYER_SPECIALIZATION_CHANGED", "player")
 
                 -- when player changes some talents we need to listing to the spell "Changing Talents"
-                self:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+                -- self:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+                self:RegisterEvent("SPELLS_CHANGED")
             else
                 self:RegisterEvent("PLAYER_TALENT_UPDATE")
             end
@@ -2094,10 +2095,11 @@ end
 
 function lib:IsDispelable(unit, spellID, dispelName, isHarmful)
     -- you can not remove debuffs from a enemy
-    if (isHarmful and not UnitCanAssist("player", unit)) or (not isHarmful and not UnitCanAttack(unit, "player")) then
+    local canAttack = UnitCanAttack(unit, "player") and UnitCanAttack("player", unit)
+    if (isHarmful and not UnitCanAssist("player", unit)) or (not isHarmful and not canAttack) then
         return false
     end
-    local spell = self[isHarmful and "debuffs" or "buffs"][dispelName]
+    local spell = self[isHarmful and "debuffs" or "buffs"][dispelName or "none"]
     return (spell ~= nil)
 end
 
