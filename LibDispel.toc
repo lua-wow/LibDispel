@@ -1,4 +1,4 @@
-## Interface: 100207, 110005
+## Interface: 100207, 110107
 ## Author: Luaerror
 ## Version: 1.0.0
 ## Title: LibDispel
