@@ -1,4 +1,4 @@
-## Interface: 100207, 110107
+## Interface: 11507, 50500, 110107
 ## Author: Luaerror
 ## Version: 1.0.0
 ## Title: LibDispel
@@ -8,4 +8,4 @@
 ## X-Website: https://github.com/lua-wow/LibDispel
 ## X-Maintainer: pedrozc90
 
-LibDispel.lua
+LibDispel.xml
