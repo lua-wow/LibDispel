@@ -5,10 +5,6 @@ local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
 -- Blizzard
-local GetSpellInfo = C_Spell and C_Spell.GetSpellInfo or _G.GetSpellInfo
-local IsPlayerSpell = _G.IsPlayerSpell
-local IsSpellKnown = _G.IsSpellKnown
-local IsSpellKnownOrOverridesKnown = _G.IsSpellKnownOrOverridesKnown
 local UnitCanAssist = _G.UnitCanAssist
 local UnitCanAttack = _G.UnitCanAttack
 
@@ -89,6 +85,29 @@ lib.notype = {
     [440313] = true,            -- Void Rift
 }
 
+if isRetail then
+    function lib:GetSpellName(spellID)
+        return C_Spell.GetSpellName(spellID)
+    end
+
+    function lib:IsSpellKnown(spellID, pet)
+        local spellBank = pet and Enum.SpellBookSpellBank.Pet or Enum.SpellBookSpellBank.Player
+        return C_SpellBook.IsSpellKnown(spellID, spellBank)
+    end
+else
+    function lib:GetSpellName(spellID)
+        local name, rank, icon, castTime, minRange, maxRange, spellID, originalIcon = GetSpellInfo(spellID)
+        return name
+    end
+
+    function lib:IsSpellKnown(spellID, pet)
+        if IsPlayerSpell and not pet then
+            return IsPlayerSpell(spellID) or false
+        end
+        return IsSpellKnown(spellID, pet) or false
+    end
+end
+
 function lib:GetDispelType(spellID, dispelName)
     if dispelName and dispelName ~= "none" and dispelName ~= "" then
         return dispelName
@@ -108,13 +127,6 @@ function lib:IsDispelable(unit, spellID, dispelName, isHarmful)
     end
     local spell = self[isHarmful and "debuffs" or "buffs"][dispelName or "none"]
     return (spell ~= nil) or lib.notype[spellID] or false
-end
-
-function lib:IsSpellKnown(spellID, pet)
-    if IsPlayerSpell and not pet then
-        return IsPlayerSpell(spellID) and spellID or nil
-    end
-    return IsSpellKnown(spellID, pet) and spellID or nil
 end
 
 if isClassic then
@@ -310,8 +322,8 @@ end
 
 function lib:ValidateSpells(dest)
     for spellID, _ in next, dest do
-        local data = GetSpellInfo(spellID)
-        if not data then
+        local spellName = self:GetSpellName(spellID)
+        if not spellName then
             self:print("Spell " .. spellID .. " do not exists.")
             dest[spellID] = nil
         end

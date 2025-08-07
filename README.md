@@ -35,3 +35,7 @@ frame:SetScript("OnEvent", function (self, event, ...)
     end
 end)
 ```
+
+## License
+
+Please, read [LICENSE](./LICENSE) file.
