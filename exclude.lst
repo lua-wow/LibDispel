@@ -1,0 +1,7 @@
+.git*
+.github*
+*.gitignore
+*.gitattributes
+*.gitmodules
+Makefile
+exclude.lst
