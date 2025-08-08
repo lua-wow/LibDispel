@@ -1,6 +1,6 @@
 ## Interface: 11507, 50500, 110200
 ## Author: Luaerror
-## Version: 1.0.0
+## Version: 1.1.0
 ## Title: LibDispel
 ## Notes: Dispel library
 ## Dependencies: LibStub
