@@ -1,0 +1,56 @@
+name: Feature Request
+description: Suggest an new feature or improvement for this project.
+title: "[Feature] "
+labels: [ "enhancement" ]
+projects: [ "lua-wow/1" ]
+assignees:
+  - pedrozc90
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please provide the necessary details below.
+
+  - type: input
+    id: feature_summary
+    attributes:
+      label: Feature Summary
+      description: Provide a brief overview of the feature you are suggesting.
+      placeholder: "Summarize your feature idea here..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem_description
+    attributes:
+      label: Problem Description
+      description: |
+        What problem is your feature request addressing? Explain the current situation, pain points, or limitations that your feature could solve.
+      placeholder: "Describe the problem here..."
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        Describe your proposed solution in detail. How would this feature work? If possible, provide examples or use cases for better understanding.
+      placeholder: "Describe the solution here..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives_considered
+    attributes:
+      label: Alternatives Considered
+      description: |
+        Have you considered any alternative solutions or workarounds? If yes, please describe them and explain why they wouldn't work as well as your proposal.
+      placeholder: "Describe any alternative solutions here..."
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: |
+        Any other context, information, or screenshots that might be helpful for understanding or implementing the feature.
+      placeholder: "Add any other relevant information here."

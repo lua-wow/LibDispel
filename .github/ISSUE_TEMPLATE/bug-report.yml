@@ -1,0 +1,41 @@
+name: Bug Report
+description: Create a report of an issue you've found
+title: "[Bug] "
+labels: [ "bug" ]
+projects: [ "lua-wow/1" ]
+assignees:
+  - pedrozc90
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please provide the necessary details below.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: Tell us what you see!
+      value: "A bug happened!"
+    validations:
+      required: true
+
+  - type: textarea
+    id: lua_error
+    attributes:
+      label: Lua Error (optional)
+      description: |
+        Please paste the error message you encountered. Make sure to wrap it inside triple backticks (```) for proper formatting. Example:
+
+        ```lua
+        Lua Error: attempt to index global 'x' (a nil value)
+        ```
+
+      placeholder: |
+        ```lua
+        Paste your Lua error here
+        ```
+    validations:
+      required: false
