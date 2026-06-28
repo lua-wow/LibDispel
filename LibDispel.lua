@@ -8,26 +8,14 @@ if not lib then return end
 local UnitCanAssist = _G.UnitCanAssist
 local UnitCanAttack = _G.UnitCanAttack
 
--- reference: https://wowpedia.fandom.com/wiki/WOW_PROJECT_ID
--- LE_EXPANSION_LEVEL_CURRENT
-local LE_EXPANSION_CLASSIC = _G.LE_EXPANSION_CLASSIC or 0                               -- Vanilla / Classic Era
-local LE_EXPANSION_BURNING_CRUSADE = _G.LE_EXPANSION_BURNING_CRUSADE or 1               -- The Burning Crusade
-local LE_EXPANSION_WRATH_OF_THE_LICH_KING = _G.LE_EXPANSION_WRATH_OF_THE_LICH_KING or 2 -- Wrath of the Lich King
-local LE_EXPANSION_CATACLYSM = _G.LE_EXPANSION_CATACLYSM or 3                           -- Cataclysm
-local LE_EXPANSION_MISTS_OF_PANDARIA = _G.LE_EXPANSION_MISTS_OF_PANDARIA or 4           -- Mists of Pandaria
-local LE_EXPANSION_WARLORDS_OF_DRAENOR = _G.LE_EXPANSION_WARLORDS_OF_DRAENOR or 5       -- Warlords of Draenor
-local LE_EXPANSION_LEGION = _G.LE_EXPANSION_LEGION or 6                                 -- Legion
-local LE_EXPANSION_BATTLE_FOR_AZEROTH = _G.LE_EXPANSION_BATTLE_FOR_AZEROTH or 7         -- Battle for Azeroth
-local LE_EXPANSION_SHADOWLANDS = _G.LE_EXPANSION_SHADOWLANDS or 8                       -- Shadowlands
-local LE_EXPANSION_DRAGONFLIGHT = _G.LE_EXPANSION_DRAGONFLIGHT or 9                     -- Dragonflight
-local LE_EXPANSION_WAR_WITHIN = _G.LE_EXPANSION_WAR_WITHIN or 10                        -- The War WithIn
-
+-- reference: https://warcraft.wiki.gg/wiki/WOW_PROJECT_ID
 local isRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 local isClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
 local isTBC = WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC
 local isWrath = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
 local isCata = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
 local isMoP = WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC
+local isForever = WOW_PROJECT_ID == WOW_PROJECT_CAMELOT
 
 -- Event Frame
 if not lib.frame then
@@ -85,57 +73,51 @@ lib.notype = {
     [440313] = true,            -- Void Rift
 }
 
-if isRetail then
-    function lib:GetSpellName(spellID)
-        return C_Spell.GetSpellName(spellID)
-    end
-
-    function lib:IsSpellKnown(spellID, pet)
-        local spellBank = pet and Enum.SpellBookSpellBank.Pet or Enum.SpellBookSpellBank.Player
-        return C_SpellBook.IsSpellKnown(spellID, spellBank)
-    end
-else
-    function lib:GetSpellName(spellID)
-        local name, rank, icon, castTime, minRange, maxRange, spellID, originalIcon = GetSpellInfo(spellID)
-        return name
-    end
-
-    function lib:IsSpellKnown(spellID, pet)
-        if IsPlayerSpell and not pet then
-            return IsPlayerSpell(spellID) or false
-        end
-        return IsSpellKnown(spellID, pet) or false
-    end
+function lib:GetSpellName(spellID)
+    return C_Spell.GetSpellName(spellID)
 end
 
+function lib:IsSpellKnown(spellID, pet)
+    local spellBank = pet and Enum.SpellBookSpellBank.Pet or Enum.SpellBookSpellBank.Player
+    return C_SpellBook.IsSpellKnown(spellID, spellBank)
+end
+
+local issecretvalue = _G.issecretvalue
+
 function lib:GetDispelType(spellID, dispelName)
-    if dispelName and dispelName ~= "none" and dispelName ~= "" then
+    if issecretvalue(spellID) or issecretvalue(dispelName) then
+        return dispelName
+    elseif dispelName and dispelName ~= "None" and dispelName ~= "" then
         return dispelName
     elseif self.enrage[spellID] then
         return "Enrage"
     elseif self.bleed[spellID] then
         return "Bleed"
     end
-    return "none"
+    return "None"
 end
 
 function lib:IsDispelable(unit, spellID, dispelName, isHarmful)
+    if issecretvalue(spellID) or issecretvalue(dispelName) or issecretvalue(isHarmful) then return false end
+    
     -- you can not remove debuffs from a enemy
     local canAttack = UnitCanAttack(unit, "player") and UnitCanAttack("player", unit)
     if (isHarmful and not UnitCanAssist("player", unit)) or (not isHarmful and not canAttack) then
         return false
     end
-    local spell = self[isHarmful and "debuffs" or "buffs"][dispelName or "none"]
+    local spell = self[isHarmful and "debuffs" or "buffs"][dispelName or "None"]
     return (spell ~= nil) or lib.notype[spellID] or false
 end
 
-if isClassic then
+-- Forever runs Classic content: spell IDs unverified
+if isClassic or isForever or isTBC or isWrath then
     function lib:UpdateDispelsTypes(class)
         if class == "DRUID" then
             local remove_curse = self:IsSpellKnown(2782) -- Remove Curse
             local abolish_poison = self:IsSpellKnown(2893) -- Abolish Poison
+            local cure_poison = self:IsSpellKnown(8946) -- Cure Poison
             self.debuffs.Curse = remove_curse
-            self.debuffs.Poison = abolish_poison
+            self.debuffs.Poison = abolish_poison or cure_poison
 
         elseif class == "HUNTER" then
             local tranquilizing_shot = self:IsSpellKnown(19801) -- Tranquilizing Shot
@@ -144,6 +126,7 @@ if isClassic then
         elseif class == "MAGE" then
             local remove_curse = self:IsSpellKnown(475) -- Remove Curse
             self.debuffs.Curse = remove_curse
+            self.buffs.Magic = self:IsSpellKnown(30449) -- Spellsteal (TBC+)
 
         elseif class == "PALADIN" then
             local purify = self:IsSpellKnown(1152) -- Purify
@@ -156,20 +139,30 @@ if isClassic then
             local dispel_magic = self:IsSpellKnown(527) -- Dispel Magic
             local cure_disease = self:IsSpellKnown(528) -- Cure Disease
             local abolish_disease = self:IsSpellKnown(552) -- Abolish Disease
-            self.buffs.Magic = dispel_magic
-            self.debuffs.Magic = dispel_magic
+            local mass_dispel = self:IsSpellKnown(32375) -- Mass Dispel (TBC+)
+            self.buffs.Magic = dispel_magic or mass_dispel
+            self.debuffs.Magic = dispel_magic or mass_dispel
             self.debuffs.Disease = abolish_disease or cure_disease
 
         elseif class == "SHAMAN" then
             local purge = self:IsSpellKnown(370) -- Purge
-            local poison_cleansing = self:IsSpellKnown(526) -- Poison Cleansing Totem
-            local disease_cleansing = self:IsSpellKnown(8170) -- Disease Cleansing Totem
-            self.debuffs.Poison = poison_cleansing
-            self.debuffs.Disease = disease_cleansing
+            local cure_poison = self:IsSpellKnown(526) -- Cure Poison / Cure Toxins (Wrath: also disease)
+            local cure_disease = self:IsSpellKnown(2870) -- Cure Disease
+            local poison_cleansing = self:IsSpellKnown(8166) -- Poison Cleansing Totem
+            local cleansing = self:IsSpellKnown(8170) -- Disease Cleansing Totem / Cleansing Totem (Wrath: also poison)
+            local cleanse_spirit = self:IsSpellKnown(51886) -- Cleanse Spirit (Wrath)
+            self.debuffs.Poison = cure_poison or poison_cleansing or (isWrath and cleansing) or cleanse_spirit
+            self.debuffs.Disease = cure_disease or cleansing or (isWrath and cure_poison) or cleanse_spirit
+            self.debuffs.Curse = cleanse_spirit
             self.buffs.Magic = purge
+
+        elseif class == "WARLOCK" then
+            local devour_magic = self:IsSpellKnown(19505, true) -- Devour Magic (Felhunter)
+            self.buffs.Magic = devour_magic
+            self.debuffs.Magic = devour_magic
         end
     end
-elseif isMoP then
+elseif isMoP or isCata then -- Cata spell IDs unverified
     function lib:UpdateDispelsTypes(class)
         if class == "DRUID" then
             local remove_corruption = self:IsSpellKnown(2782) -- Remove Corruption
@@ -243,9 +236,9 @@ else
             self.debuffs.Bleed = cauterizing
 
         elseif class == "DRUID" then
+            local cure = self:IsSpellKnown(88423) -- Nature's Cure
             local corruption = cure or self:IsSpellKnown(2782) -- Remove Corruption
             local soothe = self:IsSpellKnown(2908) -- Soothe
-            local cure = self:IsSpellKnown(88423) -- Nature's Cure
             local improved_cure = self:IsSpellKnown(392378) -- Improved Nature's Cure (Restoration Talent)
             self.debuffs.Magic = cure or improved_cure
             self.debuffs.Curse = corruption or improved_cure

@@ -1,4 +1,4 @@
-## Interface: 11507, 50500, 110200
+## Interface: 11509, 16001, 20506, 38002, 40402, 50504, 120100
 ## Author: Luaerror
 ## Version: 1.1.0
 ## Title: LibDispel
