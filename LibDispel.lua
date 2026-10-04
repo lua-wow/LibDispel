@@ -1,4 +1,34 @@
-local MAJOR, MINOR = "LibDispel", 10100
+--[[
+# Library: LibDispel
+
+Tells which auras the player can dispel, based on the player's class and known spells.
+Adds the "Enrage" and "Bleed" types for auras that Blizzard reports without a dispel type.
+
+## Notes
+
+Dispel abilities are re-read on PLAYER_LOGIN, on PLAYER_SPECIALIZATION_CHANGED and SPELLS_CHANGED
+(Retail), on PLAYER_TALENT_UPDATE (other clients) and on the player's UNIT_PET (warlocks only).
+Secret values are never compared, see each function.
+
+## Fields
+
+.class   - the player's class token, set on PLAYER_LOGIN (string)
+.buffs   - dispel type → whether the player can remove buffs of that type from enemies (table)
+.debuffs - dispel type → whether the player can remove debuffs of that type from friends (table)
+.enrage  - spell ID → name of the auras treated as "Enrage" (table)
+.bleed   - spell ID → name of the auras treated as "Bleed" (table)
+.notype  - spell ID → true, for auras without a dispel type that can still be dispelled (table)
+
+## Examples
+
+    local LibDispel = LibStub("LibDispel")
+
+    local aura = C_UnitAuras.GetAuraDataByIndex(unit, 1, "HARMFUL")
+    local dispelType = LibDispel:GetDispelType(aura.spellId, aura.dispelName)
+    local isDispelable = LibDispel:IsDispelable(unit, aura.spellId, dispelType, true)
+--]]
+
+local MAJOR, MINOR = "LibDispel", 10200
 assert(LibStub, MAJOR .. " requires LibStub")
 
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
@@ -30,39 +60,24 @@ if not lib.frame then
                 -- fired when the player's spec has changed (switching between specs)
                 self:RegisterUnitEvent("PLAYER_SPECIALIZATION_CHANGED", "player")
 
-                -- when player changes some talents we need to listing to the spell "Changing Talents"
-                -- self:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+                -- fires when spells in the spellbook change in any way (talents, druid forms)
                 self:RegisterEvent("SPELLS_CHANGED")
             else
                 self:RegisterEvent("PLAYER_TALENT_UPDATE")
             end
 
-            -- fires when spells in the spellbook change in any way
-            -- fires when DRUID change form (annoying...)
-            -- self:RegisterEvent("SPELLS_CHANGED")
-
-            -- self:RegisterEvent("LEARNED_SPELL_IN_TAB")
-            -- self:RegisterEvent("CHARACTER_POINTS_CHANGED")
-            
             if class == "WARLOCK" then
-                -- fired when a unit's pet changes
-                self:RegisterEvent("UNIT_PET")
+                -- fired when the player's pet changes
+                self:RegisterUnitEvent("UNIT_PET", "player")
             end
-
-            -- lib:ValidateSpells(lib.enrage)
-            -- lib:ValidateSpells(lib.bleed)
-        elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
-            local unit, guid, spellID = ...
-            if spellID ~= 384255 then return end
         end
-        
+
         lib:UpdateDispels()
     end)
 end
 
 lib.buffs = lib.buffs or {}
 lib.debuffs = lib.debuffs or {}
-lib.spells = lib.spells or {}
 lib.enrage = lib.enrage or {}
 lib.bleed = lib.bleed or {}
 
@@ -73,10 +88,13 @@ lib.notype = {
     [440313] = true,            -- Void Rift
 }
 
-function lib:GetSpellName(spellID)
-    return C_Spell.GetSpellName(spellID)
-end
+--[[ Function: lib:IsSpellKnown(spellID, pet)
+Returns whether the player, or the player's pet, knows a spell.
 
+* self    - LibDispel
+* spellID - the spell to check (number)
+* pet     - check the pet spellbook instead of the player's (boolean?)
+--]]
 function lib:IsSpellKnown(spellID, pet)
     local spellBank = pet and Enum.SpellBookSpellBank.Pet or Enum.SpellBookSpellBank.Player
     return C_SpellBook.IsSpellKnown(spellID, spellBank)
@@ -84,6 +102,14 @@ end
 
 local issecretvalue = _G.issecretvalue
 
+--[[ Function: lib:GetDispelType(spellID, dispelName)
+Returns the aura's dispel type: `dispelName` when it is set or secret, otherwise "Enrage" or "Bleed"
+when the spell is in `.enrage` or `.bleed`, otherwise "None" (string).
+
+* self       - LibDispel
+* spellID    - the aura's spell ID (number)
+* dispelName - the aura's `dispelName` from its AuraData (string?)
+--]]
 function lib:GetDispelType(spellID, dispelName)
     if issecretvalue(spellID) or issecretvalue(dispelName) then
         return dispelName
@@ -97,17 +123,33 @@ function lib:GetDispelType(spellID, dispelName)
     return "None"
 end
 
+--[[ Function: lib:IsDispelable(unit, spellID, dispelName, isHarmful)
+Returns whether the player can remove the aura (boolean): debuffs from units the player can assist,
+buffs from units the player can attack. Returns false when any argument is secret.
+
+* self       - LibDispel
+* unit       - the unit holding the aura (string)
+* spellID    - the aura's spell ID (number)
+* dispelName - the aura's dispel type, usually from `GetDispelType` (string?)
+* isHarmful  - whether the aura is a debuff (boolean)
+--]]
 function lib:IsDispelable(unit, spellID, dispelName, isHarmful)
     if issecretvalue(spellID) or issecretvalue(dispelName) or issecretvalue(isHarmful) then return false end
-    
+
     -- you can not remove debuffs from a enemy
     local canAttack = UnitCanAttack(unit, "player") and UnitCanAttack("player", unit)
     if (isHarmful and not UnitCanAssist("player", unit)) or (not isHarmful and not canAttack) then
         return false
     end
-    local spell = self[isHarmful and "debuffs" or "buffs"][dispelName or "None"]
-    return (spell ~= nil) or lib.notype[spellID] or false
+    return self[isHarmful and "debuffs" or "buffs"][dispelName or "None"] or self.notype[spellID] or false
 end
+
+--[[ Function: lib:UpdateDispelsTypes(class)
+Fills `.buffs` and `.debuffs` with the dispel types the player can remove. Defined per client.
+
+* self  - LibDispel
+* class - the player's class token (string)
+--]]
 
 -- Forever runs Classic content: spell IDs unverified
 if isClassic or isForever or isTBC or isWrath then
@@ -222,8 +264,6 @@ else
             self.debuffs.Magic = self:IsSpellKnown(205604)  -- Reverse Magic (PvP)
             self.buffs.Magic = self:IsSpellKnown(278326) -- Consume Magic
 
-        elseif class == "DEATHKNIGHT" then
-
         elseif class == "EVOKER" then
             local naturalize = self:IsSpellKnown(360823) -- Naturalize (Preservation)
             local expunge = self:IsSpellKnown(365585) -- Expunge (Devastation)
@@ -299,30 +339,14 @@ else
     end
 end
 
+--[[ Function: lib:UpdateDispels()
+Clears and rebuilds `.buffs` and `.debuffs`. Called by the library's events.
+
+* self - LibDispel
+--]]
 function lib:UpdateDispels()
     table.wipe(self.buffs)
     table.wipe(self.debuffs)
-    table.wipe(self.spells)
 
-    local class = self.class
-
-    self:UpdateDispelsTypes(class)
-
-    if self.buffs.Magic then
-        self.spells[self.buffs.Magic] = "offensive"
-    end
-end
-
-function lib:ValidateSpells(dest)
-    for spellID, _ in next, dest do
-        local spellName = self:GetSpellName(spellID)
-        if not spellName then
-            self:print("Spell " .. spellID .. " do not exists.")
-            dest[spellID] = nil
-        end
-    end
-end
-
-function lib:print(...)
-    print("|cffffa1a1" .. MAJOR .. ":|r", ...)
+    self:UpdateDispelsTypes(self.class)
 end

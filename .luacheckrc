@@ -19,7 +19,6 @@ read_globals = {
     table = {fields = {'wipe'}},
 
     -- namespaces
-    'C_Spell',
     'C_SpellBook',
     'Enum',
 
